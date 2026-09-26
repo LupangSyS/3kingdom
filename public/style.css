@@ -400,3 +400,20 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
   .board.crowd .seat { width: 78px; padding: 3px 2px 2px; }
   .myrow { display: none; }
 }
+
+/* speech bubbles above seats */
+.s-bubble {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 6;
+  width: max-content; max-width: 190px; background: #fffaf0; color: #1b1b1b; border: 2px solid #1b1b1b;
+  border-radius: 12px; padding: 4px 8px; font-size: 12px; line-height: 1.35; text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .5); animation: pop .18s ease-out; pointer-events: none;
+}
+.s-bubble::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #1b1b1b;
+}
+.s-bubble.below { bottom: auto; top: calc(100% + 8px); }
+.s-bubble.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #1b1b1b; }
+@keyframes pop { from { transform: translateX(-50%) scale(.7); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.seat .s-bubble { font-weight: 600; }
+@media (max-width: 520px) { .s-bubble { max-width: 130px; font-size: 10.5px; padding: 3px 6px; } }

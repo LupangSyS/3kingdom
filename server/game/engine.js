@@ -54,6 +54,7 @@ class Game {
     const n = o.players.length;
     if (!ROLE_TABLE[n]) throw new Error('จำนวนผู้เล่นต้องอยู่ระหว่าง 2-10 คน');
     this.onUpdate = o.onUpdate || (() => {});
+    this.onEvent = o.onEvent || (() => {});
     this.botDelay = o.botDelay ?? 700;
     this.timeouts = { play: 90000, respond: 25000, negate: 12000, disconnected: 12000, ...(o.timeouts || {}) };
     this.maxRounds = o.maxRounds || 0;
@@ -83,6 +84,11 @@ class Game {
   // ════════════════════════════ utilities ════════════════════════════
 
   update() { this.onUpdate(); }
+
+  /** เหตุการณ์ในเกมสำหรับให้บอทพูดคุย (ไม่มีผลต่อกติกา) */
+  emit(type, data = {}) {
+    try { this.onEvent({ type, ...data }); } catch (e) { console.error('event handler error', e); }
+  }
 
   log(text) {
     this.logs.push({ id: ++this.logSeq, text });
@@ -476,6 +482,7 @@ class Game {
 
   finish(result) {
     this.result = result;
+    this.emit('gameover', { result });
     this.phase = 'over';
     for (const e of [...this.pending.values()]) { e.timers.forEach(clearTimeout); }
     this.pending.clear();
@@ -529,6 +536,7 @@ class Game {
       }).then((ans) => this.setHero(p, ans.hero, true));
     }));
     for (const p of others) this.log(`${p.name} เลือก ${HEROES[p.hero].name}`);
+    this.emit('start');
   }
 
   setHero(p, id, quiet) {
@@ -548,6 +556,7 @@ class Game {
     };
     this.table = [];
     this.log(`── เทิร์นของ ${p.name} (${HEROES[p.hero].name}) ──`);
+    this.emit('turn', { player: p });
 
     // เริ่มเทิร์น
     this.phase = 'start';
@@ -583,6 +592,7 @@ class Game {
         if (hit) {
           this.toDiscard([c]);
           this.log(`⚡ สายฟ้าฟาด ${p.name}!`);
+          this.emit('lightning', { target: p });
           await this.damage(null, p, 3, null, 'thunder');
         } else {
           this.passLightning(p, c);
@@ -834,6 +844,7 @@ class Game {
       if (t.judgeZone.some((x) => x.asKey === v.key)) { this.toDiscard([c]); return; }
       c.asKey = v.key;
       t.judgeZone.push(c);
+      if (v.key === 'indulgence') this.emit('indulgence', { source: user, target: t });
       if (v.key === 'indulgence') this.noteHostile(user, t);
       return;
     }
@@ -861,6 +872,7 @@ class Game {
         const c = await this.chooseCardFrom(user, t, { title: `${CARD_INFO[v.key].name}: เลือกการ์ดของ ${t.name} ที่จะ${verb}` });
         if (!c) break;
         const zone = t.hand.includes(c) ? 'hand' : 'other';
+        this.emit('robbed', { source: user, target: t });
         if (v.key === 'steal') {
           this.obtain(user, c);
           this.log(`${user.name} หยิบ${zone === 'hand' ? 'การ์ดในมือ 1 ใบ' : cardStr(c)}จาก ${t.name}`);
@@ -989,6 +1001,7 @@ class Game {
 
   async attackHit(user, v, t) {
     if (!t.alive || !user.alive) return;
+    this.emit('attack', { source: user, target: t });
     const wk = this.weaponKey(user);
     const ignoreArmor = wk === 'blue_steel';
     if (!ignoreArmor && t.equip.armor && t.equip.armor.key === 'renwang' && v.color === 'black') {
@@ -1222,6 +1235,7 @@ class Game {
       this.log(`${q.name} ใช้「ไร้ช่องโหว่」${negated ? 'ยกเลิกไร้ช่องโหว่' : `ยกเลิก「${tname}」ต่อ ${target.name}`}`);
       if (this.hasSkill(q, 'jizhi')) { this.log(`${q.name} ใช้ทักษะ ${SKILLS.jizhi.name} จั่ว 1 ใบ`); this.draw(q, 1); }
       negated = !negated;
+      if (source && source !== q) this.emit('negated', { source: q, target: source, trickKey });
     }
     return negated;
   }
@@ -1377,6 +1391,7 @@ class Game {
     this.log(`💥 ${target.name} ได้รับความเสียหาย${nature === 'thunder' ? 'สายฟ้า' : ''} ${amount}${source ? ` จาก ${source.name}` : ''} (${target.hp}/${target.maxHp})`);
     this.noteHostile(source, target, amount);
     this.update();
+    if (target.hp > 0) this.emit('damage', { source, target, amount });
     if (target.hp <= 0) await this.dying(target, source);
     if (!target.alive) return;
 
@@ -1427,6 +1442,7 @@ class Game {
 
   async dying(target, source) {
     this.log(`🩸 ${target.name} อยู่ในสภาวะใกล้ตาย! ต้องการ ลูกท้อ ${1 - target.hp} ใบ`);
+    this.emit('dying', { target, source });
     const start = this.ts && this.ts.player.alive ? this.ts.player : target;
     for (const s of this.orderFrom(start)) {
       while (target.hp <= 0 && s.alive) {
@@ -1441,6 +1457,7 @@ class Game {
         target.hp += 1 + extra;
         this.noteFriendly(s, target);
         this.log(`${s.name} ช่วย ${target.name} (${target.hp}/${target.maxHp})`);
+        if (s !== target) this.emit('saved', { source: s, target });
       }
       if (target.hp > 0) break;
     }
@@ -1455,6 +1472,7 @@ class Game {
     target.alive = false;
     target.hp = 0;
     this.log(`☠️ ${target.name} (${HEROES[target.hero].name}) เสียชีวิต — บทบาท: ${ROLES[target.role].name}`);
+    this.emit('death', { target, source });
     const all = [...target.hand, ...this.equipCards(target), ...target.judgeZone];
     target.hand = [];
     target.equip = { weapon: null, armor: null, defHorse: null, offHorse: null };

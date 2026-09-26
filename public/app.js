@@ -44,6 +44,12 @@ socket.on('state', (st) => {
   const pr = curPrompt();
   if (!pr || !S.sel || S.sel.pid !== pr.id) S.sel = pr ? newSel(pr) : null;
   render();
+  const chat = (st.room && st.room.chat) || [];
+  const last = chat[chat.length - 1];
+  if (last && last.id !== S.lastBubble) {
+    S.lastBubble = last.id;
+    setTimeout(render, BUBBLE_MS + 100);
+  }
 });
 
 function send(ev, data) { socket.emit(ev, data); }
@@ -381,8 +387,10 @@ function seatHTML(p) {
   }).join('');
   const off = !p.connected && !p.isBot ? '<span class="s-flag" title="หลุดการเชื่อมต่อ">📴</span>' : p.isBot ? '<span class="s-flag" title="บอท">🤖</span>' : '';
   const dist = p.distance != null && p.alive ? `<span class="s-dist ${p.inRange ? 'inr' : ''}" title="ระยะจากคุณ${p.inRange ? ' (อยู่ในระยะโจมตี)' : ''}">${p.inRange ? '🎯' : '↔'}${p.distance}</span>` : '';
+  const said = recentSay(p.pid);
+  const bubble = said ? `<div class="s-bubble ${pos.cy < -0.3 ? 'below' : ''}">${esc(said)}</div>` : '';
   return `<div class="${cls}" data-seat="${p.seat}" style="left:calc(50% + ${pos.cx.toFixed(4)} * (50% - var(--shw)));top:calc(50% + ${pos.cy.toFixed(4)} * (50% - var(--shh)))">
-    <div class="s-av">${avatarHTML(p.hero)}
+    ${bubble}<div class="s-av">${avatarHTML(p.hero)}
       <span class="s-hc" title="การ์ดในมือ">${p.handCount}</span>${judge ? `<span class="s-judges">${judge}</span>` : ''}${selNo}
       ${h ? `<button class="info s-info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
     <div class="s-name">${p.seat === g.mySeat ? '<span class="s-you">คุณ</span>' : ''}${off}${esc(p.name)}</div>
@@ -390,6 +398,18 @@ function seatHTML(p) {
     <div class="s-hp">${p.alive ? hpHTML(p) : '☠ เสียชีวิต'} ${dist}</div>
     ${eq ? `<div class="s-eq">${eq}</div>` : ''}
   </div>`;
+}
+
+// ข้อความแชทล่าสุดของผู้เล่น (แสดงเป็นลูกโป่งคำพูดบนโต๊ะ ~6 วินาที)
+const BUBBLE_MS = 6500;
+function recentSay(pid) {
+  const chat = (S.st && S.st.room && S.st.room.chat) || [];
+  for (let i = chat.length - 1; i >= 0; i--) {
+    const m = chat[i];
+    if (now() - m.at > BUBBLE_MS) return null;
+    if (m.pid === pid) return m.text.length > 70 ? `${m.text.slice(0, 68)}…` : m.text;
+  }
+  return null;
 }
 
 function arrowsHTML() {

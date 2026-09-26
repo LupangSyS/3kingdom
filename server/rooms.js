@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { Game } = require('./game/engine');
+const { Banter } = require('./game/banter');
 const { CARD_INFO, SUIT_SYMBOL, RANK_STR } = require('./game/cards');
 const { HEROES, SKILLS, KINGDOMS, ROLES } = require('./game/heroes');
 
@@ -135,8 +136,11 @@ class RoomManager {
       if (!room) return;
       const t = String(text || '').trim().slice(0, 200);
       if (!t) return;
-      this.pushChat(room, { from: pl.name, text: t });
+      this.pushChat(room, { from: pl.name, pid: pl.pid, text: t });
       this.broadcast(room);
+      if (room.game && room.banter && !room.game.result) {
+        this.botSay(room, room.game, room.banter.replyTo(room.game, pl, t));
+      }
     });
 
     on('toLobby', () => {
@@ -230,9 +234,12 @@ class RoomManager {
     room.players = room.players.filter((p) => !p.left);
     room.status = 'playing';
     room.chat = room.chat.slice(-20);
+    const banter = new Banter();
+    room.banter = banter;
     const game = new Game({
       players: room.players.map((p) => ({ pid: p.pid, name: p.name, isBot: p.isBot })),
       onUpdate: () => this.broadcast(room),
+      onEvent: (ev) => { if (this.opts.botChat !== false) this.botSay(room, game, banter.react(game, ev)); },
       botDelay: this.opts.botDelay ?? 900,
       timeouts: this.opts.timeouts,
     });
@@ -245,6 +252,18 @@ class RoomManager {
       this.broadcast(room);
     });
     this.broadcast(room);
+  }
+
+  /** บอทพูดในแชท โดยหน่วงเวลาให้ดูเป็นธรรมชาติ */
+  botSay(room, game, lines) {
+    lines.forEach((l, i) => {
+      const delay = 600 + i * 1400 + Math.random() * 900;
+      setTimeout(() => {
+        if (room.game !== game || !this.rooms.has(room.code)) return;
+        this.pushChat(room, { from: l.name, pid: l.pid, text: l.text, bot: true });
+        this.broadcast(room);
+      }, delay).unref?.();
+    });
   }
 
   pushChat(room, msg) {
