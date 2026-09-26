@@ -13,6 +13,29 @@ npm start            # http://localhost:3000
 
 ทดสอบ: `npm test`
 
+## 🎨 Art Studio (สร้าง/อัปโหลดภาพประกอบ)
+
+เปิด `/studio` (เช่น `https://your-game.onrender.com/studio`) เพื่อใส่ภาพให้ตัวละคร 25 ตัว, หน้าการ์ดทุกชนิด, หลังไพ่ และผ้าปูโต๊ะ
+ช่องที่ยังไม่มีภาพ เกมจะใช้หน้าตาเดิม
+
+1. เลือกช่อง → **✨ สร้างด้วย AI** (มีคำบรรยายภาษาอังกฤษเตรียมไว้ให้ แก้ได้) หรือ **📁 อัปโหลดไฟล์**
+2. ซูม/ลากจัดตำแหน่ง ดูตัวอย่างบนโต๊ะและการ์ด → **💾 บันทึก** — ภาพขึ้นในเกมทันที
+3. กด **⬆ เผยแพร่ขึ้น GitHub** เพื่อ commit ภาพทั้งหมดใน 1 commit ให้เก็บถาวร (Render จะ deploy ใหม่ ห้องที่เล่นอยู่จะรีเซ็ต — กดตอนไม่มีคนเล่น)
+
+ตัวแปรสภาพแวดล้อม (ตั้งใน Render → Environment):
+
+| ตัวแปร | จำเป็น | ความหมาย |
+|---|---|---|
+| `STUDIO_PASSWORD` | ✅ (บนเซิร์ฟเวอร์จริง) | รหัสเข้า Art Studio (ถ้าไม่ตั้ง ใช้ได้เฉพาะจาก localhost) |
+| `OPENAI_API_KEY` | สำหรับสร้างภาพด้วย AI | คีย์จาก platform.openai.com (ประมาณ $0.02–0.08 ต่อภาพ) |
+| `OPENAI_IMAGE_MODEL` | ไม่ | ค่าเริ่มต้น `gpt-image-1` |
+| `GITHUB_TOKEN` | สำหรับปุ่มเผยแพร่ | Fine-grained token ที่มีสิทธิ์ **Contents: Read and write** เฉพาะ repo นี้ |
+| `GITHUB_REPO` | สำหรับปุ่มเผยแพร่ | เช่น `LupangSyS/POS` |
+| `GITHUB_BRANCH` | ไม่ | ค่าเริ่มต้น `main` |
+
+ถ้ารันบนเครื่องตัวเองโดยไม่ตั้ง GitHub token: ภาพถูกบันทึกใน `public/art/` ให้ `git add public/art && git commit` เอง
+อย่าใช้ภาพจากกล่องเกมจริง (ลิขสิทธิ์) — ใช้ภาพที่สร้างใหม่หรือวาดเอง
+
 ## ฟีเจอร์
 
 - **ระบบห้อง**: สร้างห้องได้รหัส 4 ตัว ส่งลิงก์ `?room=CODE` ให้เพื่อน หัวห้องเพิ่ม/เตะบอทและเริ่มเกมได้ ผู้เล่น 2–10 คน
@@ -31,12 +54,15 @@ npm start            # http://localhost:3000
 server/
   index.js        HTTP + Socket.IO
   rooms.js        ระบบห้อง, token/rejoin, broadcast สถานะรายคน
+  studio.js       Art Studio API (สร้างภาพ AI, บันทึก, เผยแพร่ขึ้น GitHub)
   game/
     engine.js     กฎเกม (async state machine — ทุกการตัดสินใจคือ prompt ที่ await)
     cards.js      ข้อมูลการ์ด
     heroes.js     ตัวละคร / ทักษะ / บทบาท
     bot.js        AI บอท
 public/           ไคลเอนต์ (HTML/CSS/JS ล้วน ไม่ต้อง build)
+  studio.html     หน้า Art Studio
+  art/            ภาพประกอบ + manifest.json
 test/             ทดสอบ engine (จำลองเกมบอทหลายร้อยเกม) และ end-to-end ผ่าน socket
 ```
 
