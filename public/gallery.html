@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a0f0c">
+  <title>คลังภาพ · สามก๊ก กลยุทธ์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .gal { max-width: 1200px; margin: 0 auto; padding: 14px 16px 40px; display: grid; gap: 14px; }
+    .gbar2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .gbar2 h1 { margin: 0; font-size: 22px; }
+    .gbar2 .sp { flex: 1; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tabs .on { border-color: var(--gold); color: var(--gold); }
+    .items { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); }
+    .item { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+    .pics { display: flex; gap: 6px; }
+    .pics img, .pics canvas { display: block; border-radius: 8px; image-rendering: pixelated; border: 2px solid #5a3a2a; }
+    .item.card-it .pics img, .item.card-it .pics canvas { width: 88px; height: 125px; }
+    .item.hero-it .pics img, .item.hero-it .pics canvas { width: 96px; height: 96px; }
+    .item.felt-it { grid-template-columns: 1fr; }
+    .item.felt-it .pics img, .item.felt-it .pics canvas { width: 100%; max-width: 320px; height: auto; }
+    .meta b { font-size: 15px; }
+    .meta .cn { font-family: 'Noto Serif SC', serif; color: var(--gold); margin-left: 4px; }
+    .meta p { margin: 4px 0; font-size: 13px; line-height: 1.45; color: #e6d9c3; }
+    .meta .sub { font-size: 12px; color: var(--muted); }
+    .meta .sk b { color: var(--gold); font-size: 13px; }
+    .suits { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+    .suits span { font-size: 11px; background: var(--card); color: #222; border-radius: 4px; padding: 0 4px; }
+    .suits span.red { color: var(--redcard); }
+    .hash { font-family: monospace; font-size: 10px; color: #8a7a66; word-break: break-all; }
+    .ok { color: #9be3ae; } .bad { color: #ffb4a8; }
+    .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="app"><div class="loading">กำลังโหลด…</div></div>
+  <script src="artgen/raster.js"></script>
+  <script src="artgen/designs.js"></script>
+  <script src="gallery.js"></script>
+</body>
+</html>
