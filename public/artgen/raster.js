@@ -150,6 +150,18 @@
       }
       return this;
     }
+    /** ตัดส่วนของภาพ */
+    crop(x0, y0, w, h) {
+      const out = new Canvas(w, h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const s = ((y + y0) * this.w + (x + x0)) * 4;
+          const t = (y * w + x) * 4;
+          for (let c = 0; c < 4; c++) out.d[t + c] = this.d[s + c];
+        }
+      }
+      return out;
+    }
     /** ขยายแบบ nearest-neighbor ให้พิกเซลคมชัด */
     scale(k) {
       const out = new Canvas(this.w * k, this.h * k);

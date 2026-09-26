@@ -16,6 +16,7 @@ test('deck has 108 cards and every card/skill is defined', () => {
   const deck = buildDeck();
   assert.strictEqual(deck.length, 108);
   for (const c of deck) assert.ok(CARD_INFO[c.key], c.key);
+  for (const [k, info] of Object.entries(CARD_INFO)) assert.ok(info.short && info.short.length <= 70, `short effect text for ${k}`);
   for (const h of Object.values(HEROES)) for (const s of h.skills) assert.ok(SKILLS[s], s);
 });
 

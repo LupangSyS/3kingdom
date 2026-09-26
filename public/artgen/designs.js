@@ -7,11 +7,11 @@
   'use strict';
 
   const { Canvas, hash, rng, mix, shade } = R;
-  const VERSION = 1;
+  const VERSION = 2;
 
   // ขนาดพิกเซลจริง (logical) และตัวคูณขยายตอนบันทึกเป็นไฟล์
   const SPECS = {
-    cards: { w: 66, h: 94, scale: 3 },
+    cards: { w: 66, h: 54, scale: 3 }, // ภาพบนหน้าการ์ด (ตัดจากฉากขนาด 66×94)
     heroes: { w: 48, h: 48, scale: 4 },
     back: { w: 66, h: 94, scale: 3 },
     felt: { w: 160, h: 100, scale: 4 },
@@ -132,7 +132,9 @@
   }
 
   // ───────────────────────── cards ─────────────────────────
-  const C = SPECS.cards;
+  const C = { w: 66, h: 94 }; // ขนาดฉากที่ใช้วาด
+  const CROP_Y = 12; // แถวบนสุดของส่วนที่ตัดมาใช้
+  const CROP = { lightning: 5, green_dragon: 2, serpent_spear: 1, halberd: 2, blue_steel: 7, double_swords: 9, duel: 12 };
   const CARD = {};
   const card = (key, bg, draw) => { CARD[key] = { bg, draw }; };
 
@@ -342,11 +344,14 @@
     });
   }
 
-  function renderCard(key) {
+  function renderScene(key) {
     const d = CARD[key];
     if (!d) throw new Error(`no design for card ${key}`);
     const [top, bottom, glow] = d.bg;
     return compose(background(C.w, C.h, hash(`card:${key}`), top, bottom, glow), d.draw);
+  }
+  function renderCard(key) {
+    return renderScene(key).crop(0, CROP[key] ?? CROP_Y, SPECS.cards.w, SPECS.cards.h);
   }
 
   // ───────────────────────── heroes ─────────────────────────
@@ -669,5 +674,5 @@
     throw new Error(`unknown art ${kind}/${id}`);
   }
 
-  return { VERSION, SPECS, CARD_KEYS: Object.keys(CARD), HERO_IDS: Object.keys(HERO), render, renderCard, renderHero, renderBack, renderFelt };
+  return { VERSION, SPECS, CARD_KEYS: Object.keys(CARD), HERO_IDS: Object.keys(HERO), render, renderCard, renderScene, renderHero, renderBack, renderFelt };
 }));

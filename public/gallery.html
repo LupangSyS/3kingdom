@@ -20,8 +20,11 @@
     .item { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
     .pics { display: flex; gap: 6px; }
     .pics img, .pics canvas { display: block; border-radius: 8px; image-rendering: pixelated; border: 2px solid #5a3a2a; }
-    .item.card-it .pics img, .item.card-it .pics canvas { width: 88px; height: 125px; }
-    .item.hero-it .pics img, .item.hero-it .pics canvas { width: 96px; height: 96px; }
+    .item.card-it .pics canvas { width: 128px; height: 105px; }
+    .item.hero-it .pics canvas { width: 120px; height: 120px; }
+    .item .hcf { width: 200px; }
+    .pics img[hidden] { display: none; }
+    .pics { flex-direction: column; align-items: center; }
     .item.felt-it { grid-template-columns: 1fr; }
     .item.felt-it .pics img, .item.felt-it .pics canvas { width: 100%; max-width: 320px; height: auto; }
     .meta b { font-size: 15px; }
@@ -41,6 +44,7 @@
   <div id="app"><div class="loading">กำลังโหลด…</div></div>
   <script src="artgen/raster.js"></script>
   <script src="artgen/designs.js"></script>
+  <script src="cardface.js"></script>
   <script src="gallery.js"></script>
 </body>
 </html>

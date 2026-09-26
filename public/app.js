@@ -91,33 +91,10 @@ function avatarHTML(heroId, extra = '') {
 }
 
 function cardHTML(c, cls = '', attrs = '') {
-  if (!c) {
-    const back = artUrl('misc', 'back');
-    return `<div class="card back ${back ? 'img' : ''} ${cls}" ${attrs}${bgStyle(back)}>${back ? '' : '三國'}</div>`;
-  }
-  const info = cardInfo(c.key);
-  const color = isRedSuit(c.suit) ? 'red' : 'black';
-  const type = { basic: 'พื้นฐาน', trick: 'กลยุทธ์', delayed: 'หน่วงเวลา', equip: 'อุปกรณ์' }[info.type];
-  const as = c.as && c.as !== c.key ? `<div class="as">${esc(cardInfo(c.as).name)}</div>` : '';
-  const range = info.range ? ` ${info.range}` : '';
-  const art = artUrl('cards', c.key);
-  if (art) {
-    return `<div class="card has-art t-${info.type} ${color} ${cls}" ${attrs} title="${esc(`${info.name}: ${info.desc}`)}">
-    <div class="c-art"${bgStyle(art)}></div>
-    <div class="c-corner">${M().ranks[c.rank] || ''}<br>${M().suits[c.suit] || ''}</div>
-    <div class="c-name">${esc(info.name)}</div>${as}</div>`;
-  }
-  return `<div class="card t-${info.type} ${color} ${cls}" ${attrs} title="${esc(`${info.name}: ${info.desc}`)}">
-    <div class="c-corner">${M().ranks[c.rank] || ''}<br>${M().suits[c.suit] || ''}</div>
-    <div class="c-name">${esc(info.name)}</div><div class="c-cn">${esc(info.cn)}</div>
-    <div class="c-type">${type}${range}</div>${as}</div>`;
+  const mini = /\bsm\b/.test(cls);
+  return CardFace.card(M(), artUrl, c, { cls: cls.replace(/\bsm\b/, ''), attrs, mini });
 }
-function virtualCardHTML(key, cls = '') {
-  const info = cardInfo(key);
-  const art = artUrl('cards', key);
-  if (art) return `<div class="card has-art t-${info.type} ${cls}" title="${esc(info.desc)}"><div class="c-art"${bgStyle(art)}></div><div class="c-name">${esc(info.name)}</div></div>`;
-  return `<div class="card t-${info.type} ${cls}" title="${esc(info.desc)}"><div class="c-name">${esc(info.name)}</div><div class="c-cn">${esc(info.cn)}</div><div class="c-type">(ทักษะ)</div></div>`;
-}
+function virtualCardHTML(key, cls = '') { return cardHTML({ key }, cls); }
 function chipHTML(c, cls = '', attrs = '') {
   const red = isRedSuit(c.suit) ? 'red' : '';
   return `<span class="chip ${red} ${cls}" ${attrs} title="${esc(cardInfo(c.key).desc)}">${suitRank(c)} ${esc(cardName(c))}</span>`;
@@ -386,7 +363,7 @@ function seatHTML(p) {
   const cands = seatCandidates();
   const pos = seatPos(p.seat);
   const cls = [
-    'seat', h ? `k-${h.kingdom}` : '',
+    'seat', h ? `k-${h.kingdom}` : '', p.seat === g.mySeat ? 'me' : '',
     g.turnSeat === p.seat ? 'current' : '', p.alive ? '' : 'dead',
     cands.has(p.seat) ? 'cand' : '', S.sel && S.sel.targets.includes(p.seat) ? 'picked' : '',
     g.waiting.some((w) => w.seat === p.seat) ? 'waiting' : '',
@@ -395,11 +372,12 @@ function seatHTML(p) {
   const selNo = selIdx >= 0 && (targetSpec() || {}).max > 1 ? `<span class="s-no">${selIdx + 1}</span>` : '';
   const eq = Object.entries(p.equip).filter(([, c]) => c).map(([slot, c]) => {
     const info = cardInfo(c.key);
-    return `<span class="s-eqi ${isRedSuit(c.suit) ? 'red' : ''}" data-card="${c.id}" title="${esc(`${info.name} ${suitRank(c)}: ${info.desc}`)}"><i>${SLOT_ICON[slot]}</i><em>${esc(info.name.replace(/ [+-]1$/, ''))}</em></span>`;
+    const mineCls = p.seat === g.mySeat ? `${selectableCards().has(c.id) ? 'click' : ''} ${S.sel && S.sel.cards.includes(c.id) ? 'picked' : ''}` : '';
+    return `<span class="s-eqi ${isRedSuit(c.suit) ? 'red' : ''} ${mineCls}" data-card="${c.id}" title="${esc(`${info.name} ${suitRank(c)}: ${info.desc}`)}"><i>${SLOT_ICON[slot]}</i><em>${esc(info.name.replace(/ [+-]1$/, ''))}</em></span>`;
   }).join('');
   const judge = p.judge.map((c) => {
     const info = cardInfo(c.as || c.key);
-    return `<span class="s-judge" data-card="${c.id}" title="${esc(`${info.name}: ${info.desc}`)}">${esc(info.cn[0])}</span>`;
+    return `<span class="s-judge" data-card="${c.id}" title="${esc(`${info.name}: ${info.desc}`)}"${bgStyle(artUrl('cards', c.as || c.key))}></span>`;
   }).join('');
   const off = !p.connected && !p.isBot ? '<span class="s-flag" title="หลุดการเชื่อมต่อ">📴</span>' : p.isBot ? '<span class="s-flag" title="บอท">🤖</span>' : '';
   const dist = p.distance != null && p.alive ? `<span class="s-dist ${p.inRange ? 'inr' : ''}" title="ระยะจากคุณ${p.inRange ? ' (อยู่ในระยะโจมตี)' : ''}">${p.inRange ? '🎯' : '↔'}${p.distance}</span>` : '';
@@ -407,7 +385,7 @@ function seatHTML(p) {
     <div class="s-av">${avatarHTML(p.hero)}
       <span class="s-hc" title="การ์ดในมือ">${p.handCount}</span>${judge ? `<span class="s-judges">${judge}</span>` : ''}${selNo}
       ${h ? `<button class="info s-info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
-    <div class="s-name">${off}${esc(p.name)}</div>
+    <div class="s-name">${p.seat === g.mySeat ? '<span class="s-you">คุณ</span>' : ''}${off}${esc(p.name)}</div>
     <div class="s-hero">${h ? esc(h.name) : 'กำลังเลือก…'} ${roleBadge(p.role)}</div>
     <div class="s-hp">${p.alive ? hpHTML(p) : '☠ เสียชีวิต'} ${dist}</div>
     ${eq ? `<div class="s-eq">${eq}</div>` : ''}
@@ -429,10 +407,10 @@ function drawArrows() {
   if (!svg || !board) return;
   const br = board.getBoundingClientRect();
   const center = (seat) => {
-    const el = seat === G().mySeat ? $('.myrow .tile') : $(`.board [data-seat="${seat}"]`);
+    const el = $(`.board [data-seat="${seat}"]`);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2 - br.left, y: (seat === G().mySeat ? r.top : r.top + r.height / 2) - br.top };
+    return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top };
   };
   svg.innerHTML = svg.dataset.pairs.split(',').filter(Boolean).map((pr) => {
     const [a, b] = pr.split('-').map((x) => center(Number(x)));
@@ -551,14 +529,14 @@ function gameHTML() {
       <button class="btn sm" data-act="drawer" data-tab="chat">💬${unread}</button>
       <button class="btn sm ghost" data-act="leaveGame">ออก</button>
     </header>
-    <section class="board">
+    <section class="board ${n >= 8 ? 'crowd' : ''}">
       <div class="felt ${artUrl('misc', 'felt') ? 'img' : ''}"${bgStyle(artUrl('misc', 'felt'))}><div class="felt-inner">
         <div class="piles"><div class="pile" title="กองจั่ว">${cardHTML(null, 'sm')}<span>${g.deckCount}</span></div>
           <div class="pile" title="กองทิ้ง"><div class="card sm discard">ทิ้ง</div><span>${g.discardCount}</span></div></div>
         ${tableHTML()}<div class="status">${waitingHTML()}</div>
       </div></div>
       ${arrowsHTML()}
-      ${order.map((p) => seatHTML(p)).join('')}
+      ${[mine, ...order].map((p) => seatHTML(p)).join('')}
     </section>
     <section class="prompt">${promptHTML()}</section>
     <section class="mine">
@@ -580,17 +558,7 @@ function drawerHTML() {
     <button class="btn sm" data-act="closeDrawer">✕</button></div>${body}</aside>`;
 }
 
-function heroCardHTML(id, pick = false) {
-  const h = M().heroes[id];
-  const skills = h.skills.map((s) => {
-    const sk = M().skills[s];
-    return `<div class="sk"><b>${esc(sk.name)} ${esc(sk.cn)}</b>${sk.lord ? ' <span class="badge host">จักรพรรดิ</span>' : ''}<br>${esc(sk.desc)}</div>`;
-  }).join('');
-  return `<div class="hero k-${h.kingdom} ${pick ? 'pick' : ''}" ${pick ? `data-act="hero" data-id="${id}"` : ''}>
-    ${artUrl('heroes', id) ? `<div class="hero-art"${bgStyle(artUrl('heroes', id))}></div>` : ''}
-    <div class="t-top">${avatarHTML(id)}<div class="t-names"><b>${esc(h.name)}</b><small>${esc(h.cn)} · ฝ่าย${esc(M().kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'}</small></div></div>
-    <div class="hp">${'❤'.repeat(h.hp)}</div>${skills}</div>`;
-}
+function heroCardHTML(id, pick = false) { return CardFace.hero(M(), artUrl, id, { pick }); }
 
 function renderModal() {
   const box = $('#modal');
@@ -623,7 +591,7 @@ function renderModal() {
   } else if (S.cardInfo) {
     const c = S.cardInfo;
     const info = cardInfo(c.as || c.key);
-    html = `<div class="modal" style="max-width:360px"><div class="cards">${cardHTML(c)}</div><h3>${esc(info.name)} ${esc(info.cn)}</h3><div>${esc(info.desc)}</div><div class="actions"><span style="flex:1"></span><button class="btn" data-act="closeInfo">ปิด</button></div></div>`;
+    html = `<div class="modal" style="max-width:360px"><div class="cards">${cardHTML(c)}</div><h3>${esc(info.name)}</h3><div>${esc(info.desc)}</div><div class="actions"><span style="flex:1"></span><button class="btn" data-act="closeInfo">ปิด</button></div></div>`;
   } else if (g && g.phase === 'over' && g.result && !S.hideResult) {
     const host = S.st.room.hostPid === S.st.me;
     const rows = g.players.map((p) => {

@@ -21,19 +21,29 @@ function slots() {
   return [{ kind: 'misc', id: 'back' }, { kind: 'misc', id: 'felt' }];
 }
 
+const artUrl = (kind, id) => { const u = S.manifest.items[`${kind}/${id}`]; return u ? `art/${u}` : null; };
+
+function faceHTML(sl) {
+  if (sl.kind === 'heroes') return CardFace.hero(S.db, artUrl, sl.id);
+  if (sl.kind === 'cards') {
+    const first = (S.db.deck[sl.id] || [])[0] || {};
+    return CardFace.card(S.db, artUrl, { key: sl.id, suit: first.suit, rank: first.rank });
+  }
+  if (sl.id === 'back') return CardFace.card(S.db, artUrl, null);
+  return `<img src="${esc(artUrl('misc', 'felt'))}" alt="felt">`;
+}
+
 function metaHTML(sl) {
   const { db } = S;
   if (sl.kind === 'heroes') {
     const h = sl.h;
-    return `<b>${esc(h.name)}</b><span class="cn">${esc(h.cn)}</span>
-      <div class="sub">ฝ่าย${esc(db.kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'} · ${'❤'.repeat(h.hp)}</div>
-      ${h.skills.map((s) => `<p class="sk"><b>${esc(db.skills[s].name)} ${esc(db.skills[s].cn)}</b> — ${esc(db.skills[s].desc)}</p>`).join('')}`;
+    return `<b>${esc(h.name)}</b><div class="sub">ฝ่าย${esc(db.kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'} · เลือด ${h.hp}</div>`;
   }
   if (sl.kind === 'cards') {
     const c = sl.c;
     const copies = db.deck[sl.id] || [];
-    return `<b>${esc(c.name)}</b><span class="cn">${esc(c.cn)}</span>
-      <div class="sub">${TYPE[c.type]}${c.range ? ` · ระยะ ${c.range}` : ''} · ในสำรับ ${copies.length} ใบ</div>
+    return `<b>${esc(c.name)}</b>
+      <div class="sub">${esc(CardFace.typeLine(c))} · ในสำรับ ${copies.length} ใบ</div>
       <p>${esc(c.desc)}</p>
       <div class="suits">${copies.map((x) => `<span class="${x.suit === 'heart' || x.suit === 'diamond' ? 'red' : ''}">${db.suits[x.suit]}${db.ranks[x.rank]}</span>`).join('')}</div>`;
   }
@@ -60,7 +70,7 @@ function render() {
       const cls = sl.kind === 'heroes' ? 'hero-it' : sl.id === 'felt' ? 'felt-it' : 'card-it';
       const chk = S.checks[key];
       return `<div class="item ${cls}">
-        <div class="pics">${url ? `<img src="art/${esc(url)}" alt="${esc(key)}" loading="lazy" data-key="${esc(key)}">` : '—'}${S.live ? `<canvas data-live="${esc(key)}"></canvas>` : ''}</div>
+        <div class="pics">${faceHTML(sl)}${url ? `<img hidden src="art/${esc(url)}" alt="" data-key="${esc(key)}">` : ''}${S.live ? `<canvas data-live="${esc(key)}" title="วาดใหม่สดในเบราว์เซอร์"></canvas>` : ''}</div>
         <div class="meta">${metaHTML(sl)}
           <div class="hash">sha256 ${esc((manifest.sha256[`${key}.png`] || '').slice(0, 16))}…</div>
           ${S.live ? `<div class="small ${chk === true ? 'ok' : chk === false ? 'bad' : ''}">${chk === true ? '✓ วาดใหม่ได้ตรงกับไฟล์ทุกพิกเซล' : chk === false ? '✗ ไม่ตรง (อาจเกิดจากเบราว์เซอร์คำนวณต่างเล็กน้อย)' : 'กำลังตรวจ…'}</div>` : ''}
