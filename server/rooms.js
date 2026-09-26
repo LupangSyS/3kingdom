@@ -241,6 +241,7 @@ class RoomManager {
       onUpdate: () => this.broadcast(room),
       onEvent: (ev) => { if (this.opts.botChat !== false) this.botSay(room, game, banter.react(game, ev)); },
       botDelay: this.opts.botDelay ?? 900,
+      pace: this.opts.pace ?? (this.opts.botDelay === 0 ? 0 : 1),
       timeouts: this.opts.timeouts,
     });
     for (const p of room.players) if (!p.isBot && !p.connected) game.setConnected(p.pid, false);

@@ -417,3 +417,26 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
 @keyframes pop { from { transform: translateX(-50%) scale(.7); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 .seat .s-bubble { font-weight: 600; }
 @media (max-width: 520px) { .s-bubble { max-width: 130px; font-size: 10.5px; padding: 3px 6px; } }
+
+/* ── animation overlay ── */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; perspective: 900px; }
+.fx { position: fixed; transform: translate(-50%, -50%); will-change: transform, opacity; }
+.fx-play { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fx-play .fx-cards { display: flex; gap: 6px; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .7)); }
+.fx-play .card { box-shadow: 0 0 0 3px #ffe08a, 0 0 26px rgba(255, 210, 110, .7); }
+.fx-play.judge .card { box-shadow: 0 0 0 3px #fff3b0, 0 0 40px rgba(255, 236, 150, .95); backface-visibility: hidden; }
+.fx-cap {
+  background: rgba(20, 12, 8, .9); color: #ffe9b8; border: 1px solid var(--gold); border-radius: 99px;
+  padding: 3px 12px; font-weight: 700; font-size: 13px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, .6);
+}
+.fx-float { font-weight: 900; font-size: 22px; white-space: nowrap; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0, 0, 0, .8); }
+.fx-float.use { color: #ffe08a; font-size: 17px; }
+.fx-float.dodge { color: #9fe3ff; font-size: 18px; }
+.fx-float.negate { color: #d8b0ff; font-size: 17px; }
+.fx-float.dmg { color: #ff5a4a; font-size: 26px; }
+.fx-float.heal { color: #7dff9a; font-size: 24px; }
+.fx-float.dead { font-size: 56px; }
+.fx-ring { width: 60px; height: 60px; border-radius: 50%; }
+.fx-ring.target { border: 3px solid #ffcf5a; box-shadow: 0 0 14px #ffcf5a; }
+.fx-ring.hit { background: radial-gradient(circle, rgba(255, 70, 50, .85), rgba(255, 70, 50, 0) 70%); }
+@media (max-width: 520px) { .fx-cap { font-size: 11px; } .fx-float.dmg { font-size: 22px; } }

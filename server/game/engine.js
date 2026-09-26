@@ -56,6 +56,10 @@ class Game {
     this.onUpdate = o.onUpdate || (() => {});
     this.onEvent = o.onEvent || (() => {});
     this.botDelay = o.botDelay ?? 700;
+    // จังหวะหยุดสั้นๆ หลังเหตุการณ์สำคัญ ให้ผู้เล่นดูแอนิเมชันทัน (0 = ไม่หยุด ใช้ในการทดสอบ)
+    this.pace = o.pace ?? 0;
+    this.id = Math.random().toString(36).slice(2, 10);
+    this.tableSeq = 0;
     this.timeouts = { play: 90000, respond: 25000, negate: 12000, disconnected: 12000, ...(o.timeouts || {}) };
     this.maxRounds = o.maxRounds || 0;
     const roles = shuffle([...ROLE_TABLE[n]]);
@@ -96,8 +100,14 @@ class Game {
     this.update();
   }
 
+  pause(ms) {
+    if (!this.pace || this.aborted) return Promise.resolve();
+    return new Promise((r) => { const t = setTimeout(r, ms * this.pace); if (t.unref) t.unref(); });
+  }
+
   pushTable(p, v, targets = [], label) {
     this.table.push({
+      id: ++this.tableSeq,
       seat: p ? p.seat : null,
       as: v.key,
       cards: v.real.map(strip),
@@ -557,6 +567,7 @@ class Game {
     this.table = [];
     this.log(`── เทิร์นของ ${p.name} (${HEROES[p.hero].name}) ──`);
     this.emit('turn', { player: p });
+    await this.pause(500);
 
     // เริ่มเทิร์น
     this.phase = 'start';
@@ -834,6 +845,8 @@ class Game {
     for (const c of v.real) this.removeCard(c);
     const info = CARD_INFO[v.key];
     this.pushTable(user, v, targets.map((t) => t.seat));
+    this.update();
+    await this.pause(1100);
     const tnames = targets.length ? ` → ${targets.map((t) => t.name).join(', ')}` : '';
     this.log(`${user.name} ใช้ ${this.vName(v)}${tnames}`);
 
@@ -1196,6 +1209,8 @@ class Game {
       for (const c of real) this.removeCard(c);
       this.toDiscard(real);
       this.pushTable(p, v, []);
+      this.update();
+      await this.pause(800);
       this.log(`${p.name} ${ctx.use ? 'ใช้' : 'ตอบสนองด้วย'} ${this.vName(v)}${ch.skill ? ` (${SKILLS[ch.skill].name})` : ''}`);
       if (key === 'attack' && this.ts && p === this.ts.player) this.ts.usedAttack = true;
       return v;
@@ -1232,6 +1247,8 @@ class Game {
       real.forEach((c) => this.removeCard(c));
       this.toDiscard(real);
       this.pushTable(q, this.makeV('negate', real), [target.seat]);
+      this.update();
+      await this.pause(900);
       this.log(`${q.name} ใช้「ไร้ช่องโหว่」${negated ? 'ยกเลิกไร้ช่องโหว่' : `ยกเลิก「${tname}」ต่อ ${target.name}`}`);
       if (this.hasSkill(q, 'jizhi')) { this.log(`${q.name} ใช้ทักษะ ${SKILLS.jizhi.name} จั่ว 1 ใบ`); this.draw(q, 1); }
       negated = !negated;
@@ -1245,6 +1262,8 @@ class Game {
     if (!c) return null;
     this.log(`${p.name} ตัดสิน [${reason}]: ${cardStr(c)}`);
     this.pushTable(p, this.makeV(c.key, [c]), [], `ตัดสิน: ${reason}`);
+    this.update();
+    await this.pause(1500);
     const start = this.ts ? this.ts.player : p;
     for (const g of this.orderFrom(start.alive ? start : p)) {
       if (!this.hasSkill(g, 'guicai') || !g.hand.length) continue;
@@ -1392,6 +1411,7 @@ class Game {
     this.noteHostile(source, target, amount);
     this.update();
     if (target.hp > 0) this.emit('damage', { source, target, amount });
+    await this.pause(800);
     if (target.hp <= 0) await this.dying(target, source);
     if (!target.alive) return;
 
@@ -1478,6 +1498,8 @@ class Game {
     target.equip = { weapon: null, armor: null, defHorse: null, offHorse: null };
     target.judgeZone = [];
     this.toDiscard(all);
+    this.update();
+    await this.pause(1400);
     this.checkVictory();
     if (source && source.alive) {
       if (target.role === 'rebel') {
@@ -1519,6 +1541,7 @@ class Game {
       phaseName: PHASE_NAMES[this.phase],
       round: this.round,
       turnSeat: this.ts ? this.ts.player.seat : null,
+      gameId: this.id,
       mySeat: me ? me.seat : null,
       deckCount: this.deck.length,
       discardCount: this.discard.length,
