@@ -16,6 +16,7 @@ let token = store.get('sgs_token');
 if (!token) { token = makeToken(); store.set('sgs_token', token); }
 
 const S = {
+  art: {},
   meta: null, st: null, offset: 0, online: false,
   sel: null, drawer: null, heroInfo: null, cardInfo: null, hideResult: false,
   seenChat: 0, urlCode: new URLSearchParams(location.search).get('room') || '',
@@ -27,6 +28,8 @@ const socket = io({ transports: ['websocket', 'polling'] });
 socket.on('connect', () => { S.online = true; socket.emit('hello', { token }); render(); });
 socket.on('disconnect', () => { S.online = false; render(); });
 socket.on('meta', (m) => { S.meta = m; render(); });
+socket.on('art', (m) => { S.art = (m && m.items) || {}; render(); });
+fetch('art/manifest.json', { cache: 'no-cache' }).then((r) => r.json()).then((m) => { S.art = m.items || {}; render(); }).catch(() => {});
 socket.on('toast', (m) => toast(m));
 socket.on('state', (st) => {
   S.offset = st.now - Date.now();
@@ -75,13 +78,36 @@ function hpHTML(p) {
 function cardName(c) { return cardInfo(c.as || c.key).name; }
 function suitRank(c) { return c.suit ? `${M().suits[c.suit]}${M().ranks[c.rank]}` : ''; }
 
+// ภาพประกอบจาก Art Studio (ถ้าไม่มีจะใช้หน้าตาเดิม)
+function artUrl(kind, id) {
+  const u = S.art[`${kind}/${id}`];
+  return u ? `art/${u}` : null;
+}
+const bgStyle = (url) => (url ? ` style="background-image:url('${esc(url)}')"` : '');
+function avatarHTML(heroId, extra = '') {
+  const h = heroId && M().heroes[heroId];
+  const url = h && artUrl('heroes', heroId);
+  const k = h ? `k-${h.kingdom}` : '';
+  return `<span class="avatar ${k} ${url ? 'img' : ''} ${extra}"${bgStyle(url)}>${h ? (url ? '' : esc(h.cn[0])) : '?'}</span>`;
+}
+
 function cardHTML(c, cls = '', attrs = '') {
-  if (!c) return `<div class="card back ${cls}" ${attrs}>三國</div>`;
+  if (!c) {
+    const back = artUrl('misc', 'back');
+    return `<div class="card back ${back ? 'img' : ''} ${cls}" ${attrs}${bgStyle(back)}>${back ? '' : '三國'}</div>`;
+  }
   const info = cardInfo(c.key);
   const color = isRedSuit(c.suit) ? 'red' : 'black';
   const type = { basic: 'พื้นฐาน', trick: 'กลยุทธ์', delayed: 'หน่วงเวลา', equip: 'อุปกรณ์' }[info.type];
   const as = c.as && c.as !== c.key ? `<div class="as">${esc(cardInfo(c.as).name)}</div>` : '';
   const range = info.range ? ` ${info.range}` : '';
+  const art = artUrl('cards', c.key);
+  if (art) {
+    return `<div class="card has-art t-${info.type} ${color} ${cls}" ${attrs} title="${esc(`${info.name}: ${info.desc}`)}">
+    <div class="c-art"${bgStyle(art)}></div>
+    <div class="c-corner">${M().ranks[c.rank] || ''}<br>${M().suits[c.suit] || ''}</div>
+    <div class="c-name">${esc(info.name)}</div>${as}</div>`;
+  }
   return `<div class="card t-${info.type} ${color} ${cls}" ${attrs} title="${esc(`${info.name}: ${info.desc}`)}">
     <div class="c-corner">${M().ranks[c.rank] || ''}<br>${M().suits[c.suit] || ''}</div>
     <div class="c-name">${esc(info.name)}</div><div class="c-cn">${esc(info.cn)}</div>
@@ -89,6 +115,8 @@ function cardHTML(c, cls = '', attrs = '') {
 }
 function virtualCardHTML(key, cls = '') {
   const info = cardInfo(key);
+  const art = artUrl('cards', key);
+  if (art) return `<div class="card has-art t-${info.type} ${cls}" title="${esc(info.desc)}"><div class="c-art"${bgStyle(art)}></div><div class="c-name">${esc(info.name)}</div></div>`;
   return `<div class="card t-${info.type} ${cls}" title="${esc(info.desc)}"><div class="c-name">${esc(info.name)}</div><div class="c-cn">${esc(info.cn)}</div><div class="c-type">(ทักษะ)</div></div>`;
 }
 function chipHTML(c, cls = '', attrs = '') {
@@ -332,7 +360,7 @@ function tileHTML(p, { mine = false } = {}) {
   const judge = p.judge.map((c) => `<span class="chip judge" data-card="${c.id}" title="${esc(cardInfo(c.as || c.key).desc)}">⚖ ${esc(cardInfo(c.as || c.key).name)}</span>`).join('');
   const flags = [!p.connected && !p.isBot ? '📴 หลุด' : '', p.isBot ? '🤖' : ''].filter(Boolean).join(' ');
   return `<div class="${cls}" data-seat="${p.seat}">
-    <div class="t-top"><span class="avatar">${h ? esc(h.cn[0]) : '?'}</span>
+    <div class="t-top">${avatarHTML(p.hero)}
       <div class="t-names"><b>${esc(p.name)}${selNo}</b><small>${h ? `${esc(h.name)} · ${esc(M().kingdoms[h.kingdom].name)}` : 'กำลังเลือก…'}</small></div>
       ${h ? `<button class="info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
     <div class="t-meta">${hpHTML(p)} ${roleBadge(p.role)} ${p.alive ? '' : '☠'}</div>
@@ -376,7 +404,7 @@ function seatHTML(p) {
   const off = !p.connected && !p.isBot ? '<span class="s-flag" title="หลุดการเชื่อมต่อ">📴</span>' : p.isBot ? '<span class="s-flag" title="บอท">🤖</span>' : '';
   const dist = p.distance != null && p.alive ? `<span class="s-dist ${p.inRange ? 'inr' : ''}" title="ระยะจากคุณ${p.inRange ? ' (อยู่ในระยะโจมตี)' : ''}">${p.inRange ? '🎯' : '↔'}${p.distance}</span>` : '';
   return `<div class="${cls}" data-seat="${p.seat}" style="left:calc(50% + ${pos.cx.toFixed(4)} * (50% - var(--shw)));top:calc(50% + ${pos.cy.toFixed(4)} * (50% - var(--shh)))">
-    <div class="s-av"><span class="avatar">${h ? esc(h.cn[0]) : '?'}</span>
+    <div class="s-av">${avatarHTML(p.hero)}
       <span class="s-hc" title="การ์ดในมือ">${p.handCount}</span>${judge ? `<span class="s-judges">${judge}</span>` : ''}${selNo}
       ${h ? `<button class="info s-info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
     <div class="s-name">${off}${esc(p.name)}</div>
@@ -524,7 +552,7 @@ function gameHTML() {
       <button class="btn sm ghost" data-act="leaveGame">ออก</button>
     </header>
     <section class="board">
-      <div class="felt"><div class="felt-inner">
+      <div class="felt ${artUrl('misc', 'felt') ? 'img' : ''}"${bgStyle(artUrl('misc', 'felt'))}><div class="felt-inner">
         <div class="piles"><div class="pile" title="กองจั่ว">${cardHTML(null, 'sm')}<span>${g.deckCount}</span></div>
           <div class="pile" title="กองทิ้ง"><div class="card sm discard">ทิ้ง</div><span>${g.discardCount}</span></div></div>
         ${tableHTML()}<div class="status">${waitingHTML()}</div>
@@ -559,7 +587,8 @@ function heroCardHTML(id, pick = false) {
     return `<div class="sk"><b>${esc(sk.name)} ${esc(sk.cn)}</b>${sk.lord ? ' <span class="badge host">จักรพรรดิ</span>' : ''}<br>${esc(sk.desc)}</div>`;
   }).join('');
   return `<div class="hero k-${h.kingdom} ${pick ? 'pick' : ''}" ${pick ? `data-act="hero" data-id="${id}"` : ''}>
-    <div class="t-top"><span class="avatar k-${h.kingdom}">${esc(h.cn[0])}</span><div class="t-names"><b>${esc(h.name)}</b><small>${esc(h.cn)} · ฝ่าย${esc(M().kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'}</small></div></div>
+    ${artUrl('heroes', id) ? `<div class="hero-art"${bgStyle(artUrl('heroes', id))}></div>` : ''}
+    <div class="t-top">${avatarHTML(id)}<div class="t-names"><b>${esc(h.name)}</b><small>${esc(h.cn)} · ฝ่าย${esc(M().kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'}</small></div></div>
     <div class="hp">${'❤'.repeat(h.hp)}</div>${skills}</div>`;
 }
 

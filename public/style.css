@@ -321,3 +321,15 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
   .card.sm .c-name { font-size: 9px; margin-top: 10px; }
   .hand { min-height: 98px; }
 }
+
+/* ── artwork from Art Studio ── */
+.avatar.img { background-size: cover; background-position: center top; }
+.card.back.img { background-size: cover; background-position: center; }
+.card.has-art { padding: 0; overflow: hidden; justify-content: flex-end; }
+.card.has-art .c-art { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.card.has-art .c-corner { background: rgba(246, 236, 214, .92); border-radius: 4px; padding: 1px 2px; top: 2px; left: 2px; z-index: 1; }
+.card.has-art .c-name { position: relative; z-index: 1; width: 100%; margin: 0; padding: 2px 1px; background: rgba(246, 236, 214, .92); font-size: 11px; }
+.card.sm.has-art .c-name { font-size: 9px; margin: 0; }
+.felt.img { background-size: cover; background-position: center; }
+.felt.img::before { display: none; }
+.hero-art { height: 160px; margin: -10px -10px 0; border-radius: 10px 10px 0 0; background-size: cover; background-position: center 20%; }
