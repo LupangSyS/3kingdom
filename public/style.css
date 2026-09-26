@@ -387,3 +387,16 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
   .hcf-art { height: 130px; }
   .heroes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
+
+/* your own seat on the table */
+.seat.me { border-color: var(--gold); background: linear-gradient(180deg, rgba(92, 64, 22, .97), rgba(46, 30, 12, .97)); }
+.seat.me .avatar { border-color: #ffe08a; box-shadow: 0 0 0 3px rgba(255, 224, 138, .35), 0 3px 8px rgba(0, 0, 0, .6); }
+.s-you { background: var(--gold); color: #2a1606; border-radius: 99px; padding: 0 6px; margin-right: 4px; font-size: 10px; font-weight: 700; }
+.s-eqi.click { outline: 2px solid #7ec8ff; cursor: pointer; }
+.s-eqi.picked { outline: 2px solid #ff5a4a; background: #ffe0dc; }
+@media (max-width: 520px) {
+  .board { min-height: 360px; }
+  .board.crowd { min-height: 420px; }
+  .board.crowd .seat { width: 78px; padding: 3px 2px 2px; }
+  .myrow { display: none; }
+}

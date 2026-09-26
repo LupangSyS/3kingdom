@@ -363,7 +363,7 @@ function seatHTML(p) {
   const cands = seatCandidates();
   const pos = seatPos(p.seat);
   const cls = [
-    'seat', h ? `k-${h.kingdom}` : '',
+    'seat', h ? `k-${h.kingdom}` : '', p.seat === g.mySeat ? 'me' : '',
     g.turnSeat === p.seat ? 'current' : '', p.alive ? '' : 'dead',
     cands.has(p.seat) ? 'cand' : '', S.sel && S.sel.targets.includes(p.seat) ? 'picked' : '',
     g.waiting.some((w) => w.seat === p.seat) ? 'waiting' : '',
@@ -372,7 +372,8 @@ function seatHTML(p) {
   const selNo = selIdx >= 0 && (targetSpec() || {}).max > 1 ? `<span class="s-no">${selIdx + 1}</span>` : '';
   const eq = Object.entries(p.equip).filter(([, c]) => c).map(([slot, c]) => {
     const info = cardInfo(c.key);
-    return `<span class="s-eqi ${isRedSuit(c.suit) ? 'red' : ''}" data-card="${c.id}" title="${esc(`${info.name} ${suitRank(c)}: ${info.desc}`)}"><i>${SLOT_ICON[slot]}</i><em>${esc(info.name.replace(/ [+-]1$/, ''))}</em></span>`;
+    const mineCls = p.seat === g.mySeat ? `${selectableCards().has(c.id) ? 'click' : ''} ${S.sel && S.sel.cards.includes(c.id) ? 'picked' : ''}` : '';
+    return `<span class="s-eqi ${isRedSuit(c.suit) ? 'red' : ''} ${mineCls}" data-card="${c.id}" title="${esc(`${info.name} ${suitRank(c)}: ${info.desc}`)}"><i>${SLOT_ICON[slot]}</i><em>${esc(info.name.replace(/ [+-]1$/, ''))}</em></span>`;
   }).join('');
   const judge = p.judge.map((c) => {
     const info = cardInfo(c.as || c.key);
@@ -384,7 +385,7 @@ function seatHTML(p) {
     <div class="s-av">${avatarHTML(p.hero)}
       <span class="s-hc" title="การ์ดในมือ">${p.handCount}</span>${judge ? `<span class="s-judges">${judge}</span>` : ''}${selNo}
       ${h ? `<button class="info s-info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
-    <div class="s-name">${off}${esc(p.name)}</div>
+    <div class="s-name">${p.seat === g.mySeat ? '<span class="s-you">คุณ</span>' : ''}${off}${esc(p.name)}</div>
     <div class="s-hero">${h ? esc(h.name) : 'กำลังเลือก…'} ${roleBadge(p.role)}</div>
     <div class="s-hp">${p.alive ? hpHTML(p) : '☠ เสียชีวิต'} ${dist}</div>
     ${eq ? `<div class="s-eq">${eq}</div>` : ''}
@@ -406,10 +407,10 @@ function drawArrows() {
   if (!svg || !board) return;
   const br = board.getBoundingClientRect();
   const center = (seat) => {
-    const el = seat === G().mySeat ? $('.myrow .tile') : $(`.board [data-seat="${seat}"]`);
+    const el = $(`.board [data-seat="${seat}"]`);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2 - br.left, y: (seat === G().mySeat ? r.top : r.top + r.height / 2) - br.top };
+    return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top };
   };
   svg.innerHTML = svg.dataset.pairs.split(',').filter(Boolean).map((pr) => {
     const [a, b] = pr.split('-').map((x) => center(Number(x)));
@@ -528,14 +529,14 @@ function gameHTML() {
       <button class="btn sm" data-act="drawer" data-tab="chat">💬${unread}</button>
       <button class="btn sm ghost" data-act="leaveGame">ออก</button>
     </header>
-    <section class="board">
+    <section class="board ${n >= 8 ? 'crowd' : ''}">
       <div class="felt ${artUrl('misc', 'felt') ? 'img' : ''}"${bgStyle(artUrl('misc', 'felt'))}><div class="felt-inner">
         <div class="piles"><div class="pile" title="กองจั่ว">${cardHTML(null, 'sm')}<span>${g.deckCount}</span></div>
           <div class="pile" title="กองทิ้ง"><div class="card sm discard">ทิ้ง</div><span>${g.discardCount}</span></div></div>
         ${tableHTML()}<div class="status">${waitingHTML()}</div>
       </div></div>
       ${arrowsHTML()}
-      ${order.map((p) => seatHTML(p)).join('')}
+      ${[mine, ...order].map((p) => seatHTML(p)).join('')}
     </section>
     <section class="prompt">${promptHTML()}</section>
     <section class="mine">
