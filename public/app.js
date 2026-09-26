@@ -28,7 +28,6 @@ const socket = io({ transports: ['websocket', 'polling'] });
 socket.on('connect', () => { S.online = true; socket.emit('hello', { token }); render(); });
 socket.on('disconnect', () => { S.online = false; render(); });
 socket.on('meta', (m) => { S.meta = m; render(); });
-socket.on('art', (m) => { S.art = (m && m.items) || {}; render(); });
 fetch('art/manifest.json', { cache: 'no-cache' }).then((r) => r.json()).then((m) => { S.art = m.items || {}; render(); }).catch(() => {});
 socket.on('toast', (m) => toast(m));
 socket.on('state', (st) => {
@@ -78,7 +77,7 @@ function hpHTML(p) {
 function cardName(c) { return cardInfo(c.as || c.key).name; }
 function suitRank(c) { return c.suit ? `${M().suits[c.suit]}${M().ranks[c.rank]}` : ''; }
 
-// ภาพประกอบจาก Art Studio (ถ้าไม่มีจะใช้หน้าตาเดิม)
+// ภาพประกอบที่สร้างจากโค้ด (public/art) — ถ้าไม่มีจะใช้หน้าตาเดิม
 function artUrl(kind, id) {
   const u = S.art[`${kind}/${id}`];
   return u ? `art/${u}` : null;
@@ -292,6 +291,7 @@ function homeHTML() {
       <li>สังหารกบฏได้จั่ว 3 ใบ · จักรพรรดิสังหารขุนนางภักดีต้องทิ้งการ์ดทั้งหมด</li>
       <li>หลุดการเชื่อมต่อ? เปิดหน้าเว็บนี้อีกครั้งจากเบราว์เซอร์เดิม ระบบจะพากลับเข้าเกมอัตโนมัติ</li>
     </ul></details>
+    <a class="btn ghost" href="gallery.html" style="text-align:center;text-decoration:none">🖼 คลังภาพการ์ดและตัวละคร</a>
   </div>`;
 }
 
