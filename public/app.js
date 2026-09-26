@@ -44,6 +44,7 @@ socket.on('state', (st) => {
   const pr = curPrompt();
   if (!pr || !S.sel || S.sel.pid !== pr.id) S.sel = pr ? newSel(pr) : null;
   render();
+  runEffects();
   const chat = (st.room && st.room.chat) || [];
   const last = chat[chat.length - 1];
   if (last && last.id !== S.lastBubble) {
@@ -749,3 +750,139 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.id === 'name' && !$('#code').value) $('[data-act="create"]').click();
   if (e.key === 'Escape') { S.heroInfo = null; S.cardInfo = null; renderModal(); }
 });
+
+
+// ════════════════════ animations (overlay layer, survives re-renders) ════════════════════
+const FX = { key: null, lastTid: 0, hp: {}, alive: {}, queue: [], busy: false };
+
+// การ์ดที่ถูกใช้แสดงทีละใบตามลำดับ (ไม่ซ้อนกัน) และไม่ค้างเกิน 4 ใบ
+function fxEnqueue(t) {
+  FX.queue.push(t);
+  if (FX.queue.length > 4) FX.queue.splice(0, FX.queue.length - 4);
+  if (!FX.busy) fxNext();
+}
+function fxNext() {
+  const t = FX.queue.shift();
+  if (!t) { FX.busy = false; return; }
+  FX.busy = true;
+  const ms = fxPlay(t) || 0;
+  setTimeout(fxNext, Math.max(300, ms * 0.72));
+}
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function fxCenterOf(el) {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+const seatCenter = (seat) => fxCenterOf($(`.board [data-seat="${seat}"] .s-av`) || $(`.board [data-seat="${seat}"]`));
+
+function fxSpawn(cls, html, at) {
+  const el = document.createElement('div');
+  el.className = `fx ${cls}`;
+  el.innerHTML = html;
+  el.style.left = `${at.x}px`;
+  el.style.top = `${at.y}px`;
+  $('#fx').appendChild(el);
+  return el;
+}
+
+function fxFloat(seat, text, cls) {
+  const at = seatCenter(seat);
+  if (!at) return;
+  const el = fxSpawn(`fx-float ${cls}`, esc(text), at);
+  el.animate([
+    { transform: 'translate(-50%, -50%) scale(.6)', opacity: 0 },
+    { transform: 'translate(-50%, -110%) scale(1.25)', opacity: 1, offset: 0.2 },
+    { transform: 'translate(-50%, -230%) scale(1)', opacity: 0 },
+  ], { duration: 1600, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+
+function fxRing(seat, cls) {
+  const at = seatCenter(seat);
+  if (!at) return;
+  const el = fxSpawn(`fx-ring ${cls}`, '', at);
+  el.animate([
+    { transform: 'translate(-50%, -50%) scale(.4)', opacity: 1 },
+    { transform: 'translate(-50%, -50%) scale(2.2)', opacity: 0 },
+  ], { duration: 900, iterations: 2, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+
+function fxPlay(t) {
+  const g = G();
+  const felt = fxCenterOf($('.felt'));
+  if (!felt || !g) return 0;
+  const isJudge = t.label && t.label.startsWith('ตัดสิน');
+  const src = isJudge ? fxCenterOf($('.piles .pile')) : t.seat != null ? seatCenter(t.seat) : felt;
+  const from = src || felt;
+  const cards = t.cards.length
+    ? t.cards.map((c) => cardHTML({ ...c, as: t.as !== c.key ? t.as : undefined })).join('')
+    : cardHTML({ key: t.as });
+  const who = t.seat != null ? g.players[t.seat].name : '';
+  const cardName = cardInfo(t.as).name;
+  const targets = t.targets.map((s2) => g.players[s2].name).join(', ');
+  const caption = isJudge ? `⚖ ${t.label.replace('ตัดสิน: ', 'ตัดสิน ')}${who ? ` (${who})` : ''}`
+    : t.label && !t.targets.length ? `${who}: ${t.label}`
+      : `${who} ใช้「${cardName}」${targets ? ` → ${targets}` : ''}`;
+  const el = fxSpawn(`fx-play ${isJudge ? 'judge' : ''}`, `<div class="fx-cards">${cards}</div><div class="fx-cap">${esc(caption)}</div>`, felt);
+  const dx = from.x - felt.x;
+  const dy = from.y - felt.y;
+  const frames = isJudge
+    ? [
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.3) rotateY(180deg)`, opacity: 0.4 },
+      { transform: 'translate(-50%, -50%) scale(1.05) rotateY(90deg)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(-50%, -50%) scale(1.1) rotateY(0deg)', opacity: 1, offset: 0.4 },
+      { transform: 'translate(-50%, -50%) scale(1.1) rotateY(0deg)', opacity: 1, offset: 0.88 },
+      { transform: 'translate(-50%, -50%) scale(.85)', opacity: 0 },
+    ]
+    : [
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.3)`, opacity: 0.3 },
+      { transform: 'translate(-50%, -50%) scale(1.08)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.35 },
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.85 },
+      { transform: 'translate(-50%, -50%) scale(.8)', opacity: 0 },
+    ];
+  const duration = isJudge ? 2100 : 1500;
+  frames[0].easing = 'cubic-bezier(.2,.8,.3,1)'; // ใช้ความนุ่มเฉพาะช่วงบินเข้า แล้วค้างไว้ให้อ่านทัน
+  el.animate(frames, { duration, easing: 'linear' }).onfinish = () => el.remove();
+  if (t.seat != null && !isJudge) fxFloat(t.seat, `${cardName}!`, t.as === 'dodge' ? 'dodge' : t.as === 'negate' ? 'negate' : 'use');
+  t.targets.forEach((s2) => fxRing(s2, 'target'));
+  return duration;
+}
+
+function runEffects() {
+  const g = G();
+  const layer = $('#fx');
+  if (!layer) return;
+  if (!g || !S.st.room || S.st.room.status === 'lobby') { layer.innerHTML = ''; FX.key = null; FX.queue = []; return; }
+  const key = `${S.st.room.code}:${g.gameId}`;
+  const fresh = FX.key === key;
+  const newPlays = fresh ? g.table.filter((t) => t.id > FX.lastTid) : [];
+  const changes = [];
+  if (fresh) {
+    for (const p of g.players) {
+      const before = FX.hp[p.seat];
+      if (before != null && p.hp !== before && p.maxHp) changes.push({ seat: p.seat, d: p.hp - before });
+      if (FX.alive[p.seat] && !p.alive) changes.push({ seat: p.seat, dead: true });
+    }
+  }
+  FX.key = key;
+  FX.lastTid = Math.max(FX.lastTid * (fresh ? 1 : 0), ...g.table.map((t) => t.id || 0), 0);
+  for (const p of g.players) { FX.hp[p.seat] = p.hp; FX.alive[p.seat] = p.alive; }
+  if (reduceMotion() || document.hidden) return;
+  newPlays.forEach(fxEnqueue);
+  const delay = newPlays.length ? 350 : 0;
+  setTimeout(() => {
+    for (const c of changes) {
+      if (c.dead) {
+        fxFloat(c.seat, '☠', 'dead');
+      } else if (c.d < 0) {
+        fxRing(c.seat, 'hit');
+        fxFloat(c.seat, `${c.d} 💥`, 'dmg');
+      } else if (c.d > 0) {
+        fxFloat(c.seat, `+${c.d} ❤`, 'heal');
+      }
+    }
+  }, delay);
+}
+window.addEventListener('resize', () => { const l = $('#fx'); if (l) l.innerHTML = ''; });
